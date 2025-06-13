@@ -21,7 +21,11 @@ enum Commands {
     Remove { title: Vec<String> },
     // mark task as done(not deleting it)
     // syntax: rtask mark title
-    Mark { title: Vec<String> },
+    Mark { 
+        title: Vec<String>,
+        #[arg(short, long)]
+        remove: bool
+     },
     // print tasklist
     List,
 }
@@ -104,8 +108,12 @@ impl Db {
     }
 
     fn mark_task(&self, title: String) -> Result<()> {
+
+
         let mut stmt = self.prep_query("SELECT * FROM tasks WHERE title= ?1")?;
         let mut rows = stmt.query_map(&[&title], Task::from_row)?;
+        
+
         let done = match rows.next() {
             Some(Ok(task)) => {
                 if !task.done {
@@ -149,9 +157,18 @@ impl Db {
         Ok(prep)
     }
 }
+
+
 // TODO: add  features like --verbose
 // TODO: add feature rtask mark --remove/-r "title" to mark & remove task
 // TODO: add removing task by id too(not uuid from bd)
+// TODO: add more features and meaning to the project
+// TODO: fix all cargo warnings
+// TODO: split monolith file into multiple monolith files :D
+
+
+//TODO: 
+// TODO: think about this struct.....
 struct AppState {
     db: Db,
 }
@@ -175,10 +192,14 @@ fn commander(app: &AppState) {
                 .list_tasks()
                 .expect("Something went wrong when tried to list tasks");
         }
-        Some(Commands::Mark { title }) => {
-            app.db
-                .mark_task(title.join(" "))
-                .expect("Something went wrong when tried to mark as done a task");
+        Some(Commands::Mark { title, remove }) => {
+             app.db.mark_task(title.join(" ")).expect("failed to mark task with a given title");
+            match *remove{
+                true => {                  
+                                app.db.remove_task(title.join(" ")).expect("failed to remove task with a given title");
+                            },
+                _ => {}
+            }   
         }
         None => {
             println!("Wrong command, exiting");

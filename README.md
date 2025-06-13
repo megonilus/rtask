@@ -1,6 +1,9 @@
-*  TODO:
-**  Todos in code
-**  GPL license
-    Describe project
-    Refactor
-    Debloat
+* rtask
+* cli todolist
+* TODO:
+** GPL license
+** Refactor
+** Future improvements
+** More features
+
+Current version: 0.1.1

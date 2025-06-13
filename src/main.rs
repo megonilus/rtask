@@ -1,11 +1,11 @@
 use clap::{Parser, Subcommand};
+use dirs;
 use rusqlite::{Connection, Result, Row, Statement};
 use std::{
     fs,
     path::{Path, PathBuf},
 };
-use uuid::Uuid;
-use dirs; // for the db save path
+use uuid::Uuid; // for the db save path
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -49,7 +49,6 @@ impl Task {
 
 struct Db {
     conn: Connection,
-    path: String,
 }
 
 impl Db {
@@ -59,7 +58,7 @@ impl Db {
 
         fs::create_dir_all(&base_path).expect("Failed to create rtask directory");
 
-        base_path.push("tasks.db");
+        base_path.push(path);
         let conn = Connection::open(base_path)?;
 
         conn.execute(
@@ -69,12 +68,9 @@ impl Db {
                 done BOOLEAN NOT NULL DEFAULT 0
             )",
             (),
-
-        ).expect("SQL gone wrong...");
-        Ok(Self {
-            conn,
-            path: path.to_string(),
-        })
+        )
+        .expect("SQL gone wrong...");
+        Ok(Self { conn })
     }
 
     fn add_task(&self, title: String) -> Result<()> {
@@ -100,7 +96,7 @@ impl Db {
     fn print_tasks(&self, tasks: Vec<Task>) {
         for task in tasks {
             println!(
-                "name: {}, done: {}",
+                "name: {}, state: {}",
                 task.title,
                 if task.done { "done" } else { "in progress" }
             );
@@ -112,9 +108,12 @@ impl Db {
         let mut rows = stmt.query_map(&[&title], Task::from_row)?;
         let done = match rows.next() {
             Some(Ok(task)) => {
-
-                if !task.done {1} else {0}
-            },
+                if !task.done {
+                    1
+                } else {
+                    0
+                }
+            }
             Some(Err(err)) => return Err(err.into()),
             None => {
                 println!("task not found");
@@ -150,7 +149,9 @@ impl Db {
         Ok(prep)
     }
 }
-// TODO: add some cool features like --verbose
+// TODO: add  features like --verbose
+// TODO: add feature rtask mark --remove/-r "title" to mark & remove task
+// TODO: add removing task by id too(not uuid from bd)
 struct AppState {
     db: Db,
 }

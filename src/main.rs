@@ -1,8 +1,11 @@
 use clap::{Parser, Subcommand};
 use rusqlite::{Connection, Result, Row, Statement};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use uuid::Uuid;
-use std::path::PathBuf;
-
+extern crate dirs; // for the db save path
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
@@ -50,7 +53,13 @@ struct Db {
 
 impl Db {
     fn new(path: &str) -> Result<Self> {
-        let conn = Connection::open(path)?;
+        let mut base_path = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
+        base_path.push("rtask");
+
+        fs::create_dir_all(&base_path).expect("Failed to create rtask directory");
+
+        base_path.push("tasks.db");
+        let conn = Connection::open(base_path)?;
         conn.execute(
             "CREATE TABLE IF NOT EXISTS tasks (
                 id TEXT PRIMARY KEY,
@@ -58,7 +67,8 @@ impl Db {
                 done BOOLEAN NOT NULL DEFAULT 0
             )",
             (),
-        ).expect("SQL gone wrong...");
+        )
+        .expect("SQL gone wrong...");
         Ok(Self {
             conn,
             path: path.to_string(),
@@ -100,8 +110,12 @@ impl Db {
         let mut rows = stmt.query_map(&[&title], Task::from_row)?;
         let done = match rows.next() {
             Some(Ok(task)) => {
-                if !task.done {1} else {0}
-            },
+                if !task.done {
+                    1
+                } else {
+                    0
+                }
+            }
             Some(Err(err)) => return Err(err.into()),
             None => {
                 println!("task not found");
@@ -171,8 +185,6 @@ fn commander(app: &AppState) {
         }
     }
 }
-
-
 
 fn main() -> Result<()> {
     let app = AppState {

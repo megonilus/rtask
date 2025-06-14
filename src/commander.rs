@@ -1,10 +1,12 @@
 use clap::Parser;
+
+use anyhow::{Context, Result};
 use crate::app_state::AppState;
 use crate::cli::{Args, Commands};
+use console::style;
 
 
-
-pub fn commander(app: &AppState) {
+pub fn commander(app: &AppState) -> Result<()>{
     let cli = Args::parse();
 
     match &cli.command {
@@ -13,27 +15,30 @@ pub fn commander(app: &AppState) {
                 .add_task(title.join(" "))
                 .expect("Something went wrong when tried to add a new task");
         }
+    
         Some(Commands::Remove { title }) => {
             app.db
-                .remove_task(title.join(" "))
-                .expect("Something went wrong when tried to remove tasks");
+                .remove_task(title.join(" ")).context(style("error: something went wrong!").red())?;
         }
         Some(Commands::List) => {
             app.db
-                .list_tasks()
-                .expect("Something went wrong when tried to list tasks");
+                .list_tasks()?;
         }
         Some(Commands::Mark { title, remove }) => {
-             app.db.mark_task(title.join(" ")).expect("failed to mark task with a given title");
+             app.db.mark_task(title.join(" ")).context(style("error: something went wrong!").red())?;
             match *remove{
                 true => {                  
-                                app.db.remove_task(title.join(" ")).expect("failed to remove task with a given title");
+                                app.db.remove_task(title.join(" ")).context(style("error: something went wrong!").red())?;
                             },
                 _ => {}
             }   
         }
         None => {
-            println!("Wrong command, exiting");
+
+            println!("{}", style("Wrong command, exiting").yellow());
         }
     }
+
+    
+    Ok(())
 }

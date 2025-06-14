@@ -1,8 +1,10 @@
 use std::{fs, path::PathBuf};
 use crate::task::Task;
-use rusqlite::{Connection, OptionalExtension, Result, Statement};
+use rusqlite::{Connection, OptionalExtension, Statement};
 use uuid::Uuid;
 use dirs;
+use console::style;
+use anyhow::{Context, Result};
 
 pub struct Db {
     pub conn: Connection,
@@ -12,8 +14,7 @@ impl Db {
     pub fn new(path: &str) -> Result<Self> {
         let mut base_path = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
         base_path.push("rtask");
-
-        fs::create_dir_all(&base_path).expect("Failed to create rtask directory");
+        fs::create_dir_all(&base_path).context(style("Failed to create rtask config dir"))?;
 
         base_path.push(path);
         let conn = Connection::open(base_path)?;
@@ -42,7 +43,7 @@ impl Db {
         .optional()?; 
 
     if let Some(_) = existing {
-        println!("Task with name \"{title}\" already exists.");
+        println!("{}", style("Task with name \"{title}\" already exists.").yellow());
         return Ok(());
     }
 
@@ -69,7 +70,8 @@ impl Db {
             println!(
                 "name: {}, state: {}",
                 task.title,
-                if task.done { "done" } else { "in progress" }
+
+                if task.done { style("done").green() } else { style("in progress").yellow() }
             );
         }
     }
@@ -91,7 +93,7 @@ impl Db {
             }
             Some(Err(err)) => return Err(err.into()),
             None => {
-                println!("task not found");
+                println!("{}", style("task not found").yellow());
                 return Ok(());
             }
         };
@@ -100,8 +102,8 @@ impl Db {
         let marked = prep.execute(rusqlite::params![&title, &done])?;
 
         match marked {
-            0 => println!("Not found a task with such a title"),
-            _ => println!("Marked"),
+            0 => println!("{}", style("task not found").yellow()),
+            _ => println!("{}", style("Marked!").green()),
         }
 
         Ok(())
@@ -112,8 +114,8 @@ impl Db {
         let deleted = prep.execute(&[&title])?;
 
         match deleted {
-            0 => println!("Not found a task with such a title"),
-            _ => println!("Removed"),
+            0 =>println!("{}", style("task not found").yellow()),
+            _ => println!("{}", style("Removed").green()),
         }
 
         Ok(())

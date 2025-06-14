@@ -1,14 +1,14 @@
-use rusqlite::Result;
+use anyhow::Result;
+use db::Db;
+use app_state::AppState;
+use commander::commander;
 
-mod task; // * task struct
+mod task; 
 mod commander;
 mod app_state;
-use app_state::AppState;
 mod db;
 mod cli; 
-
-use db::Db;
-use commander::commander;
+mod tui;
 
 // TODO: add  features like --verbose
 // TODO: add more features and meaning to the project
@@ -19,13 +19,12 @@ use commander::commander;
 // TODO: remove unused dependecies
 // TODO: nerd font icons
 // TODO: install.sh and install.bat(or other)
+// TODO: utils.rs for utililes functions
 
 fn main() -> Result<()> {
     let app = AppState {
         db: Db::new("tasks.db")?,
     };
-
-    commander(&app);
-
+    commander(&app)?;
     Ok(())
 }

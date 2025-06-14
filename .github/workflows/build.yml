@@ -8,8 +8,6 @@ on:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
-    outputs:
-      artifact-name: ${{ steps.upload.outputs.artifact-name }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
@@ -19,7 +17,6 @@ jobs:
       - run: cargo build --release
       - run: cp target/release/rtask rtask-linux
       - name: Upload Linux artifact
-        id: upload
         uses: actions/upload-artifact@v4
         with:
           name: rtask-linux
@@ -34,12 +31,12 @@ jobs:
           toolchain: stable
           override: true
       - run: cargo build --release
-      - run: copy target\release\rtask.exe rtask-windows.exe
+      - run: copy target\release\rtask.exe rtask.exe
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: rtask-windows
-          path: rtask-windows.exe
+          path: rtask.exe
 
   build-macos:
     runs-on: macos-latest
@@ -84,7 +81,7 @@ jobs:
         with:
           files: |
             artifacts/rtask-linux
-            artifacts/rtask-windows.exe
+            artifacts/rtask.exe
             artifacts/rtask-macos
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

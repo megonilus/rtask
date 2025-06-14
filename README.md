@@ -6,4 +6,4 @@
 ** Future improvements
 ** More features
 
-Current version: 0.1.1
+Current version: 0.1.6

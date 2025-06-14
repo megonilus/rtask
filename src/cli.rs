@@ -13,7 +13,8 @@ use clap::{Parser, Subcommand};
     // TODO: export tasks to JSON and MD
     // TODO: list --done
     // TODO: list --search
-    // TODO: deadlines(optional)
+    // TODO: deadlines(optional for task creating)
+    // TODO: sorting by priority
     pub enum Commands {
         // Adds to tasklist a todo with a name
         Add {

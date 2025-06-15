@@ -73,9 +73,12 @@ In TUI mode you can do all stuff what you can in cli mode
 
 ## Notes
 
-I'm still learning Rust and programming itself — please excuse any bugs, weird behavior, or silly mistakes in the code. If you notice anything broken, feel free to open an issue or PR!
+I'm still learning Rust and programming itself — please excuse any bugs, weird behavior, or silly mistakes in the code.
+I'm not very active on Github so I can go a long time without responding to PRs and Issues
 
 Also, forgive my poor English if something sounds odd :)
+
+
 
 Thanks for trying `rtask`!
 

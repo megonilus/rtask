@@ -17,7 +17,7 @@ License: *GPL (planned)*
 ---
 
 ## Installation
-
+Download the latest release or alternatively compile yourself:
 ```sh
 cargo install --path .
 ```

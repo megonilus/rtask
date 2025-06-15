@@ -33,5 +33,7 @@ use clap::{Parser, Subcommand};
         },
         // print tasklist
         List,
+        // TODO: flags?
+        Tui
     }
 

@@ -11,7 +11,6 @@ License: *GPL (planned)*
 
 * ✅ Add and remove tasks
 * ✅ Mark tasks as done or not done
-* 🔁 Auto-remove tasks after marking them as done (with `-r` flag)
 * 📋 List all tasks
 * 🖥️ Interactive TUI mode
 
@@ -63,18 +62,21 @@ In TUI mode you can do all stuff what you can in cli mode
 
 ## TODO
 
-*
+* More features
+* Safer code
+* Better error handling
+* Easier installation
+* 
+  
 
 ---
 
 ## Notes
 
-I'm still learning Rust and growing as a developer — please excuse any bugs, weird behavior, or silly mistakes in the code. If you notice anything broken, feel free to open an issue or PR!
+I'm still learning Rust and programming itself — please excuse any bugs, weird behavior, or silly mistakes in the code. If you notice anything broken, feel free to open an issue or PR!
 
 Also, forgive my poor English if something sounds odd :)
 
 Thanks for trying `rtask`!
 
 ---
-
-*"One task at a time ✨"*

@@ -1,6 +1,6 @@
 # rtask — CLI/TUI Todo List Manager
 
-> A simple and minimalistic task manager for your terminal. Built with love and Rust.
+> is a project that has taught me a lot about Rust!
 
 Current Version: `0.2.0`
 License: *GPL (planned)*

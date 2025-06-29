@@ -1,14 +1,19 @@
+use std::{cell::RefCell, rc::Rc};
+
 use anyhow::Result;
 use app_state::AppState;
 use commander::commander;
 
-mod task; 
-mod commander;
-mod app_state;
-mod db;
-mod cli; 
-mod tui;
+use crate::{backend::Backend, task::Task};
 
+mod app_state;
+mod backend;
+mod cli;
+mod colors;
+mod commander;
+mod task;
+mod task_option;
+mod tui;
 // TODO: add  features like --verbose
 // TODO: add more features and meaning to the project
 // TODO: fix all cargo warnings
@@ -20,9 +25,16 @@ mod tui;
 // TODO: separate file for handling output(handler.rs)
 
 fn main() -> Result<()> {
-    let mut app = AppState::new("tasks.db");
+    let shared_tasks: Rc<RefCell<Vec<Task>>> = Rc::new(RefCell::new(vec![]));
 
+    let mut backend = Backend::new("tasks.json", Rc::clone(&shared_tasks))?;
 
-    commander(&mut app)?;
+    backend.update()?;
+
+    let mut app = AppState::new(shared_tasks);
+
+    commander(&mut app, &mut backend)?;
+
+    let _ = backend.save();
     Ok(())
 }

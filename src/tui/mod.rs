@@ -1,14 +1,18 @@
 use color_eyre::eyre::{Ok, Result};
 use ratatui::{
+    DefaultTerminal, Frame,
     crossterm::event::{self, Event, KeyEvent},
-    layout::{Constraint, Layout},
+    layout::{Alignment, Constraint, Flex, Layout, Rect},
     style::{Color, Style, Stylize},
     text::{Line, ToSpan},
     widgets::{Block, BorderType, List, ListItem, Padding, Paragraph, Widget},
-    DefaultTerminal, Frame,
 };
 
-use crate::app_state::AppState;
+use crate::{
+    app_state::{AppState, TuiState},
+    backend::Backend,
+    task_option::TaskOption,
+};
 
 // TODO: split in different files
 // TODO: better UI
@@ -19,61 +23,70 @@ enum FormAction {
     Escape,
 }
 
-pub fn init(state: &mut AppState) -> Result<()> {
+pub fn init(state: &mut AppState, backend: &mut Backend) -> Result<()> {
     // TODO: fix this
-    let _ = state.update();
+    let _ = backend.update();
+
     color_eyre::install()?;
 
     let terminal = ratatui::init();
 
-    let result = run(terminal, state);
+    let result = run(terminal, state, backend);
 
     ratatui::restore();
     result
 }
 
-fn run(mut terminal: DefaultTerminal, app_state: &mut AppState) -> Result<()> {
+fn run(
+    mut terminal: DefaultTerminal,
+    app_state: &mut AppState,
+    backend: &mut Backend,
+) -> Result<()> {
     // loop where we are rendering and handling the input
     loop {
         // Rendering
-        // TODO: разобраться с этим
         terminal.draw(|f| render(f, app_state))?;
 
         // Input handling
         if let Event::Key(key) = event::read()? {
-            if app_state.is_add_new {
-                match handle_new_todo(key, app_state) {
+            match app_state.tui_state {
+                TuiState::Add(_) => match handle_new_todo(key, app_state) {
                     FormAction::None => {}
                     FormAction::Submit => {
-                        app_state.is_add_new = false;
-                        // TODO: fix this
-                        let _ = app_state.db.add_task(&app_state.input_string);
-                        let _ = app_state.update();
-                        app_state.input_string.clear();
+                        if let Some(input_string) = app_state.tui_state.get_input_string() {
+                            let _ = backend.add_task(input_string);
+                            let _ = backend.save();
+
+                            input_string.clear();
+                        }
+                        app_state.tui_state = TuiState::Normal;
                     }
                     FormAction::Escape => {
-                        app_state.is_add_new = false;
-                        app_state.input_string.clear();
+                        app_state.tui_state = TuiState::Normal;
                     }
-                }
-            } else {
-                if handle_key(key, app_state) {
-                    break;
+                },
+                _ => {
+                    if handle_key(key, app_state, backend) {
+                        break;
+                    }
                 }
             }
         }
     }
-
     Ok(())
 }
 
 fn handle_new_todo(key: KeyEvent, app_state: &mut AppState) -> FormAction {
     match key.code {
         event::KeyCode::Char(char) => {
-            app_state.input_string.push(char);
+            if let Some(input_string) = app_state.tui_state.get_input_string() {
+                input_string.push(char);
+            }
         }
         event::KeyCode::Backspace => {
-            app_state.input_string.pop();
+            if let Some(input_string) = app_state.tui_state.get_input_string() {
+                input_string.pop();
+            }
         }
         event::KeyCode::Esc => {
             return FormAction::Escape;
@@ -88,7 +101,7 @@ fn handle_new_todo(key: KeyEvent, app_state: &mut AppState) -> FormAction {
     FormAction::None
 }
 
-fn handle_key(key: KeyEvent, app_state: &mut AppState) -> bool {
+fn handle_key(key: KeyEvent, app_state: &mut AppState, backend: &mut Backend) -> bool {
     match key.code {
         event::KeyCode::Esc => {
             // * exiting the program with esc keybinding
@@ -96,24 +109,17 @@ fn handle_key(key: KeyEvent, app_state: &mut AppState) -> bool {
         }
         event::KeyCode::Enter => {
             if let Some(index) = app_state.list_state.selected() {
-                if let Some(item) = app_state.items.get_mut(index) {
-                    let _ = app_state.db.mark_task(&item.title);
-                    item.done = !item.done;
-                }
+                let _ = backend.mark_task(TaskOption::Id(index + 1));
             }
         }
         event::KeyCode::Backspace => {
             if let Some(index) = app_state.list_state.selected() {
-                if let Some(task) = app_state.items.get(index) {
-                    // TODO: error handling
-                    let _ = app_state.db.remove_task(&task.title);
-                    app_state.items.remove(index);
-                }
+                let _ = backend.remove_task(TaskOption::Id(index + 1));
             }
         }
         event::KeyCode::Char(char) => match char {
             'c' => {
-                app_state.is_add_new = true;
+                app_state.tui_state = TuiState::Add("".to_string());
             }
             'k' => {
                 app_state.list_state.select_previous();
@@ -121,9 +127,23 @@ fn handle_key(key: KeyEvent, app_state: &mut AppState) -> bool {
             'j' => {
                 app_state.list_state.select_next();
             }
+            'h' => {
+                app_state.showing_help = !app_state.showing_help;
+            }
             _ => {}
         },
-
+        event::KeyCode::Up => {
+            if let Some(i) = app_state.list_state.selected() {
+                backend.substract_priority(TaskOption::Id(i + 1), true);
+                let _ = backend.save();
+            }
+        }
+        event::KeyCode::Down => {
+            if let Some(i) = app_state.list_state.selected() {
+                backend.substract_priority(TaskOption::Id(i + 1), false);
+                let _ = backend.save();
+            }
+        }
         _ => {}
     }
 
@@ -135,63 +155,87 @@ fn render(frame: &mut Frame, app_state: &mut AppState) {
     let [border_area] = Layout::vertical([Constraint::Fill(1)])
         .margin(1)
         .areas(frame.area());
-    if app_state.is_add_new {
-        let main_instructions = Line::from(vec![
-            " Submit ".into(),
-            "<Enter>".blue().bold(),
-            " Quit ".into(),
-            "<Esc>".blue().bold(),
-        ])
-        .centered();
-        Paragraph::new(app_state.input_string.as_str())
-            .block(
-                Block::bordered()
-                    .title("Input description".to_span().into_centered_line())
-                    .title_bottom(main_instructions)
-                    .fg(Color::Yellow)
-                    .padding(Padding::uniform(1)),
-            )
-            .render(border_area, frame.buffer_mut())
-    } else {
-        let [inner_area] = Layout::vertical([Constraint::Fill(1)])
-            .margin(1)
-            .areas(border_area);
+    let items = app_state.items.borrow_mut();
+    match &app_state.tui_state {
+        TuiState::Normal => {
+            if app_state.showing_help {
+                let help_box_area =
+                    center(border_area, Constraint::Length(60), Constraint::Length(12));
 
-        let main_bindings = Line::from(vec![
-            " Move selection up ".into(),
-            "<J>".blue().bold(),
-            " Move selection down ".into(),
-            "<K>".blue().bold(),
-            " Add a task ".into(),
-            "<C>".blue().bold(),
-            " Mark task ".into(),
-            "<Enter> ".blue().bold(),
-            " Remove task ".into(),
-            "<Backspace> ".blue().bold(),
-            " Quit ".into(),
-            "<Esc> ".blue().bold(),
-        ])
-        .centered();
+                let help_text = Paragraph::new(vec![
+                    Line::from(vec!["j / k".cyan().bold(), " - Move up/down".into()]),
+                    Line::from(vec!["c".cyan().bold(), " - Create task".into()]),
+                    Line::from(vec!["Enter".cyan().bold(), " - Toggle done".into()]),
+                    Line::from(vec!["Up / Down".cyan().bold(), " - Priority +/-".into()]),
+                    Line::from(vec!["Backspace".cyan().bold(), " - Remove task".into()]),
+                    Line::from(vec!["Esc".cyan().bold(), " - Exit".into()]),
+                ])
+                .block(
+                    Block::bordered()
+                        .title("Help".to_span().into_centered_line())
+                        .border_type(BorderType::Rounded)
+                        .fg(Color::Cyan)
+                        .padding(Padding::uniform(1)),
+                )
+                .alignment(Alignment::Left);
 
-        Block::bordered()
-            .border_type(BorderType::Rounded)
-            .fg(Color::LightGreen)
-            .title("rtask tui".to_span().into_centered_line())
-            .title_bottom(main_bindings)
-            .render(border_area, frame.buffer_mut());
+                help_text.render(help_box_area, frame.buffer_mut());
+            }
 
-        let list = List::new(app_state.items.iter().map(|task| {
-            let value = if task.done {
-                task.title.to_span().crossed_out()
-            } else {
-                task.title.to_span()
-            };
-            ListItem::from(value)
-        }))
-        .fg(Color::Blue)
-        .highlight_style(Style::default().fg(Color::Green))
-        .highlight_symbol(">");
+            let [inner_area] = Layout::vertical([Constraint::Fill(1)])
+                .margin(1)
+                .areas(border_area);
+            Block::bordered()
+                .border_type(BorderType::Rounded)
+                .fg(Color::LightGreen)
+                .title("rtask tui".to_span().into_centered_line())
+                .title_bottom("Help - <h> ".to_span().into_centered_line())
+                .render(border_area, frame.buffer_mut());
 
-        frame.render_stateful_widget(list, inner_area, &mut app_state.list_state);
+            let list = List::new(items.iter().map(|task| {
+                let value = Line::from(vec![
+                    if task.done {
+                        task.title.to_span().crossed_out()
+                    } else {
+                        task.title.to_span()
+                    },
+                    " | ".into(),
+                    task.priority.to_str().into(),
+                ]);
+
+                ListItem::from(value)
+            }))
+            .fg(Color::Blue)
+            .highlight_style(Style::default().fg(Color::Green))
+            .highlight_symbol(">");
+
+            frame.render_stateful_widget(list, inner_area, &mut app_state.list_state);
+        }
+        TuiState::Add(input_string) => {
+            let add_binds = Line::from(vec![
+                " Submit ".into(),
+                "<Enter>".blue().bold(),
+                " Quit ".into(),
+                "<Esc>".blue().bold(),
+            ])
+            .centered();
+            Paragraph::new(input_string.as_str())
+                .block(
+                    Block::bordered()
+                        .title("Input description".to_span().into_centered_line())
+                        .title_bottom(add_binds)
+                        .fg(Color::Yellow)
+                        .padding(Padding::uniform(1)),
+                )
+                .render(border_area, frame.buffer_mut())
+        }
     }
+}
+
+fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -> Rect {
+    let [area] = Layout::horizontal([horizontal])
+        .flex(Flex::Center)
+        .areas(area);
+    let [area] = Layout::vertical([vertical]).flex(Flex::Center).areas(area);
+    area
 }

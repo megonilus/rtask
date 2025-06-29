@@ -1,53 +1,71 @@
-use clap::Parser;
-use anyhow::{Context, Result};
 use crate::app_state::AppState;
+use crate::backend::Backend;
 use crate::cli::{Args, Commands};
+use crate::colors::{error_msg, success_msg, warning_msg};
+use crate::task::Priority;
+use crate::task_option::TaskOption;
 use crate::tui::init;
-use console::style;
+use anyhow::{Context, Result};
+use clap::Parser;
 
-
-pub fn commander(app: &mut AppState) -> Result<()>{
+pub fn commander(app: &mut AppState, backend: &mut Backend) -> Result<()> {
     let cli = Args::parse();
 
     match &cli.command {
         Some(Commands::Add { title }) => {
-            app.db
+            backend
                 .add_task(&title.join(" "))
                 .expect("Something went wrong when tried to add a new task");
         }
-    
+
         Some(Commands::Remove { title }) => {
-            if app.db.remove_task(&title.join(" ")).context(style("error: something went wrong!").red())?{
-                println!("{}", style("Removed!").yellow())
-             }
-             else {println!("{}", style("task not found").yellow())}
+            if backend
+                .remove_task(TaskOption::Title(title.join(" ")))
+                .context(error_msg("error: something went wrong!"))?
+            {
+                println!("{}", success_msg("Removed!"))
+            } else {
+                println!("{}", warning_msg("task not found"))
+            }
         }
         Some(Commands::List) => {
-            app.db
-                .list_tasks()?;
+            backend.print_tasks();
         }
         Some(Commands::Mark { title, remove }) => {
-             if app.db.mark_task(&title.join(" ")).context(style("error: something went wrong!").red())?{
-                println!("{}", style("Marked!").yellow())
-             }
-             else {println!("{}", style("task not found").yellow())}
-            match *remove{
-                true => {                  
-                                app.db.remove_task(&title.join(" ")).context(style("error: something went wrong!").red())?;
-                            },
-                _ => {}
-            }   
+            println!(
+                "{}",
+                backend
+                    .mark_task(TaskOption::Title(title.join(" ")))
+                    .context(error_msg("error: something went wrong!"))?
+            );
+            if *remove {
+                backend
+                    .remove_task(TaskOption::Title(title.join(" ")))
+                    .context(error_msg("Error: something went wrong!"))?;
+            }
         }
         Some(Commands::Tui) => {
-            init(app).expect("failed to init tui!  ");
+            init(app, backend).expect("Failed to init tui!");
+        }
+        Some(Commands::Priority { title, priority }) => {
+            let p = Priority::from_str(priority);
+
+            match p {
+                Ok(priority) => {
+                    println!(
+                        "{}",
+                        backend.edit_priority(TaskOption::Title(title.join(" ")), priority)
+                    )
+                }
+                Err(e) => {
+                    println!("{}", error_msg(e.as_str()))
+                }
+            };
         }
         None => {
-
-            println!("{}", style("Wrong command, exiting").yellow());
+            println!("{}", warning_msg("Wrong command, exiting"));
         }
-
     }
 
-    
     Ok(())
 }

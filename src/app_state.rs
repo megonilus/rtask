@@ -20,15 +20,13 @@ impl TuiState {
 #[derive(Debug)]
 // TODO: global app name variable?
 pub struct AppState {
-    pub items: Rc<RefCell<Vec<Task>>>,
     pub list_state: ListState,
     pub tui_state: TuiState,
     pub showing_help: bool,
 }
 impl AppState {
-    pub fn new(items: Rc<RefCell<Vec<Task>>>) -> Self {
+    pub fn new() -> Self {
         Self {
-            items,
             list_state: ListState::default(),
             // is_add_new: false,
             // input_string: String::new(),

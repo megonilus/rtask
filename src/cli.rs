@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand};
 
+use crate::task_option::TaskOption;
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
@@ -14,27 +16,27 @@ pub struct Args {
 // TODO: deadlines(optional for task creating)
 // TODO: sorting by priority
 pub enum Commands {
-    // Adds to tasklist a todo with a name
+    /// Adds to tasklist a todo with a name
     Add {
         title: Vec<String>,
     },
-    // Remove from tasklist a task
+    /// Remove from tasklist a task by id or title
     Remove {
-        title: Vec<String>,
+        option: TaskOption,
     },
-    // mark task as done(not deleting it)
-    // syntax: rtask mark title
+    /// mark task as done(not deleting it) by id or title
     Mark {
-        title: Vec<String>,
+        option: TaskOption,
         #[arg(short, long)]
         remove: bool,
     },
+    /// change priority of task by id or title
     Priority {
         priority: String,
-        title: Vec<String>,
+        option: TaskOption,
     },
-    // print tasklist
+    /// print tasklist
     List,
-    // TODO: flags?
+    /// enter tui mode instead of cli
     Tui,
 }

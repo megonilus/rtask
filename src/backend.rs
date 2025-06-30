@@ -1,31 +1,31 @@
 use crate::{
     colors::{error_msg, success_msg, warning_msg},
+    error::AppError,
     task::{Priority, Task},
     task_option::TaskOption,
 };
-use anyhow::{Context, Ok, Result};
 use dirs::config_dir;
-use owo_colors::{OwoColorize, colors::*};
-use serde_json::Result as SerdeResult;
+use owo_colors::{colors::*, OwoColorize};
 use std::{
-    cell::RefCell,
     fs::{self, File},
     io::Write,
     path::PathBuf,
-    rc::Rc,
+    sync::mpsc::TryIter,
 };
 
 #[derive(Debug)]
 pub struct Backend {
     pub path: PathBuf,
-    pub items: Rc<RefCell<Vec<Task>>>,
+    pub items: Vec<Task>,
 }
 
 impl Backend {
-    pub fn new(path: &str, items: Rc<RefCell<Vec<Task>>>) -> Result<Self> {
+    pub fn new(path: &str) -> Result<Self, AppError> {
         let mut base_path = config_dir().unwrap_or_else(|| PathBuf::from("."));
         base_path.push("rtask");
-        fs::create_dir_all(&base_path).context("Failed to create rtask config dir".fg::<Red>())?;
+        if let Err(e) = fs::create_dir_all(&base_path) {
+            eprintln!("{}", "Failed to create rtask config dir".fg::<Red>());
+        }
 
         base_path.push(path);
 
@@ -34,25 +34,26 @@ impl Backend {
         }
         Ok(Self {
             path: base_path,
-            items,
+            items: vec![],
         })
     }
 
-    pub fn add_task(&self, title: &String) -> Result<&str> {
-        if *title == *"" {
-            return Ok("Empty input!");
+    pub fn add_task(&mut self, title: &String) -> Result<(), AppError> {
+        if title == "" {
+            return Err(AppError::EmptyInput);
         }
         // ! check for an existing task
         let task = Task::new(title);
 
-        self.items.borrow_mut().push(task);
-        Ok("Added!")
+        self.items.push(task);
+        Ok(())
     }
 
     pub fn print_tasks(&self) {
-        for task in self.items.borrow().iter() {
+        for (index, task) in self.items.iter().enumerate() {
             println!(
-                "name: {}, state: {}, priority: {}",
+                "№{} name: {}, state: {}, priority: {}",
+                index + 1,
                 task.title,
                 if task.done {
                     success_msg("Done")
@@ -63,87 +64,94 @@ impl Backend {
             );
         }
     }
-    pub fn mark_task(&mut self, opt: TaskOption) -> Option<String> {
-        let mut items = self.items.borrow_mut();
+    pub fn mark_task(&mut self, opt: TaskOption) -> Result<(), AppError> {
+        let items = &mut self.items;
 
         match opt {
             TaskOption::Id(id) => {
                 if id == 0 || id > items.len() {
-                    return Some(error_msg("Wrong index!"));
+                    return Err(AppError::TooBigIndex(id, items.len()));
                 }
                 if let Some(task) = items.get_mut(id - 1) {
                     task.done = !task.done;
-                    Some(success_msg("Marked!"))
-                } else {
-                    Some(warning_msg("Not marked!"))
+                    return Ok(());
                 }
+                Err(AppError::TaskNotFound(opt))
             }
             TaskOption::Title(title) => {
                 let mut found = false;
                 for t in items.iter_mut() {
-                    if t.title == *title {
+                    if t.title == title.join(" ") {
                         t.done = !t.done;
                         found = true
                     }
                 }
-                Some(if found {
-                    success_msg("Marked!")
+                if found {
+                    Ok(())
                 } else {
-                    warning_msg("Not found with such title!")
-                })
+                    Err(AppError::TaskNotFound(TaskOption::Title(title)))
+                }
             }
         }
     }
 
-    pub fn edit_priority(&self, opt: TaskOption, prior: Priority) -> &str {
+    pub fn edit_priority(&mut self, opt: TaskOption, prior: Priority) -> Result<(), AppError> {
         match opt {
             TaskOption::Id(id) => {
-                let mut items = self.items.borrow_mut();
+                let items = &mut self.items;
                 if id == 0 || id > items.len() {
-                    return "Wrong id!";
+                    return Err(AppError::TooBigIndex(id, items.len()));
                 }
                 if let Some(task) = items.get_mut(id - 1) {
                     task.priority = prior;
-                    "Edited!"
+                    Ok(())
                 } else {
-                    "Not found!!"
+                    Err(AppError::TaskNotFound(opt))
                 }
             }
             TaskOption::Title(title) => {
-                if title == *"" {
-                    return "Empty input!";
+                if title.join(" ") == "" {
+                    return Err(AppError::EmptyInput);
                 }
-                let mut items = self.items.borrow_mut();
+                let items = &mut self.items;
                 let mut found = false;
 
                 for t in items.iter_mut() {
-                    if t.title == title {
+                    if t.title == title.join(" ") {
                         t.priority = prior.clone();
                         found = true
                     }
                 }
-                if found { "Edited!" } else { "Not found!" }
+                if found {
+                    Ok(())
+                } else {
+                    Err(AppError::TaskNotFound(TaskOption::Title(title)))
+                }
             }
         }
     }
 
-    pub fn substract_priority(&mut self, opt: TaskOption, increase: bool) {
-        let mut items = self.items.borrow_mut();
+    pub fn substract_priority(&mut self, opt: TaskOption, increase: bool) -> Result<(), AppError> {
+        let items = &mut self.items;
         match opt {
             TaskOption::Id(index) => {
-                if index != 0 && index <= items.len() {
-                    if let Some(task) = items.get_mut(index - 1) {
+                if index != 0 || index < items.len() {
+                    if let Some(task) = items.get_mut(index) {
                         task.priority = if increase {
                             task.priority.increase()
                         } else {
                             task.priority.decrease()
-                        }
-                    }
+                        };
+                        return Ok(());
+                    } 
+                    return Err(AppError::TaskNotFound(TaskOption::Id(index)));
+                    
                 }
+                return Err(AppError::TooBigIndex(index, items.len()));
             }
             TaskOption::Title(title) => {
                 for t in items.iter_mut() {
-                    if t.title == title {
+                    if t.title == title.join(" ") {
                         t.priority = if increase {
                             t.priority.increase()
                         } else {
@@ -151,37 +159,41 @@ impl Backend {
                         }
                     }
                 }
+                Ok(())
             }
         }
     }
 
     // TODO: this
-    pub fn remove_task(&self, opt: TaskOption) -> Result<bool> {
-        let mut items = self.items.borrow_mut();
+    pub fn remove_task(&mut self, opt: &TaskOption) -> Result<(), AppError> {
+        let items = &mut self.items;
         match opt {
             TaskOption::Id(i) => {
-                items.swap_remove(i - 1);
+                if *i == 0  || *i > items.len() {
+                    return Err(AppError::TooBigIndex(*i, items.len()));
+                }
+                items.remove(*i - 1);
             }
             TaskOption::Title(title) => {
-                items.retain(|t| t.title != title);
+                if title.join(" ") == "" {
+                    return Err(AppError::EmptyInput);
+                }
+                items.retain(|t| t.title != title.join(" "));
             }
         }
 
-        Ok(true)
+        Ok(())
     }
-    pub fn update(&mut self) -> Result<()> {
-        *self.items.borrow_mut() = serde_json::from_str(fs::read_to_string(&self.path)?.as_str())?;
+    pub fn update(&mut self) -> Result<(), AppError> {
+        self.items = serde_json::from_str(fs::read_to_string(&self.path)?.as_str())?;
         Ok(())
     }
 
-    pub fn save(&mut self) -> SerdeResult<()> {
-        if let Err(e) = fs::write(
-            &self.path,
-            &serde_json::to_string_pretty(&*self.items.borrow())?,
-        ) {
-            println!("An error ocurred when tried to save tasks: {e}")
+    pub fn save(&mut self) -> Result<(), AppError> {
+        if let Err(e) = fs::write(&self.path, &serde_json::to_string_pretty(&*self.items)?) {
+            println!("An AppError ocurred when tried to save tasks: {e}")
         };
 
-        SerdeResult::Ok(())
+        Ok(())
     }
 }

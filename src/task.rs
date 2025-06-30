@@ -52,7 +52,7 @@ impl Priority {
         match self.to_str() {
             "Low" => success_msg("Low"),
             "Normal" => warning_msg("Normal"),
-            "High" => error_msg("HIgh"),
+            "High" => error_msg("High"),
             _ => "".to_string(),
         }
     }

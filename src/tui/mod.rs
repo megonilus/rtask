@@ -1,11 +1,11 @@
 use color_eyre::eyre::{Ok, Result};
 use ratatui::{
-    DefaultTerminal, Frame,
     crossterm::event::{self, Event, KeyEvent},
     layout::{Alignment, Constraint, Flex, Layout, Rect},
     style::{Color, Style, Stylize},
     text::{Line, ToSpan},
     widgets::{Block, BorderType, List, ListItem, Padding, Paragraph, Widget},
+    DefaultTerminal, Frame,
 };
 
 use crate::{
@@ -45,7 +45,7 @@ fn run(
     // loop where we are rendering and handling the input
     loop {
         // Rendering
-        terminal.draw(|f| render(f, app_state))?;
+        terminal.draw(|f| render(f, app_state, &backend))?;
 
         // Input handling
         if let Event::Key(key) = event::read()? {
@@ -105,16 +105,20 @@ fn handle_key(key: KeyEvent, app_state: &mut AppState, backend: &mut Backend) ->
     match key.code {
         event::KeyCode::Esc => {
             // * exiting the program with esc keybinding
+            if app_state.showing_help {
+                app_state.showing_help = false;
+                return false;
+            }
             return true;
         }
         event::KeyCode::Enter => {
             if let Some(index) = app_state.list_state.selected() {
-                let _ = backend.mark_task(TaskOption::Id(index + 1));
+                let _ = backend.mark_task(TaskOption::Id(index));
             }
         }
         event::KeyCode::Backspace => {
             if let Some(index) = app_state.list_state.selected() {
-                let _ = backend.remove_task(TaskOption::Id(index + 1));
+                let _ = backend.remove_task(&TaskOption::Id(index));
             }
         }
         event::KeyCode::Char(char) => match char {
@@ -134,13 +138,13 @@ fn handle_key(key: KeyEvent, app_state: &mut AppState, backend: &mut Backend) ->
         },
         event::KeyCode::Up => {
             if let Some(i) = app_state.list_state.selected() {
-                backend.substract_priority(TaskOption::Id(i + 1), true);
+                backend.substract_priority(TaskOption::Id(i), true);
                 let _ = backend.save();
             }
         }
         event::KeyCode::Down => {
             if let Some(i) = app_state.list_state.selected() {
-                backend.substract_priority(TaskOption::Id(i + 1), false);
+                backend.substract_priority(TaskOption::Id(i), false);
                 let _ = backend.save();
             }
         }
@@ -151,11 +155,11 @@ fn handle_key(key: KeyEvent, app_state: &mut AppState, backend: &mut Backend) ->
 }
 
 // function for rendering
-fn render(frame: &mut Frame, app_state: &mut AppState) {
+fn render(frame: &mut Frame, app_state: &mut AppState, backend: &Backend) {
     let [border_area] = Layout::vertical([Constraint::Fill(1)])
         .margin(1)
         .areas(frame.area());
-    let items = app_state.items.borrow_mut();
+    let items = &backend.items;
     match &app_state.tui_state {
         TuiState::Normal => {
             if app_state.showing_help {

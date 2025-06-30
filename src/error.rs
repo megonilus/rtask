@@ -14,7 +14,7 @@ pub enum AppError {
     #[error("NotFound error: task with title {0} not found ")]
     TaskNotFound(TaskOption),
 
-    #[error("Error: Empty input")]
+    #[error("Empty input")]
     EmptyInput,
 
     #[error("TooBigIndex error: entered {0}, when max is: {1}")]
@@ -22,6 +22,9 @@ pub enum AppError {
 
     #[error("Invalid priority: {0}")]
     InvalidPriority(String),
+
+    #[error("Task with title: {0} already exists")]
+    AlreadyExists(String),
 
     #[error("Error: {0}")]
     ColorEyreError(#[from] color_eyre::eyre::Error),

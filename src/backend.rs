@@ -44,6 +44,11 @@ impl Backend {
         if title.is_empty() {
             return Err(AppError::EmptyInput);
         }
+        
+        if Option::is_some(&self.items.iter().find(|t| t.title == title)){
+            return Err(AppError::AlreadyExists(title.to_string()))
+        }   
+        
         // ! check for an existing task
         let task = Task::new(title);
 

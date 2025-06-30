@@ -2,7 +2,7 @@
 
 > is a project that has taught me a lot about Rust!
 
-Current Version: `0.3.0`
+Current Version: `0.3.1`
 License: _GPL (planned)_
 
 ---

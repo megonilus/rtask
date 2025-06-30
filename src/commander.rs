@@ -1,53 +1,51 @@
-use clap::Parser;
-use anyhow::{Context, Result};
 use crate::app_state::AppState;
+use crate::backend::Backend;
 use crate::cli::{Args, Commands};
+use crate::colors::warning_msg;
+use crate::error::AppError;
+use crate::task::Priority;
 use crate::tui::init;
-use console::style;
+use clap::Parser;
+use std::result::Result::Ok;
 
-
-pub fn commander(app: &mut AppState) -> Result<()>{
+pub fn commander(app: &mut AppState, backend: &mut Backend) -> Result<(), AppError> {
     let cli = Args::parse();
+    let mut is_need_to_print = false;
 
-    match &cli.command {
+    match cli.command {
         Some(Commands::Add { title }) => {
-            app.db
-                .add_task(&title.join(" "))
-                .expect("Something went wrong when tried to add a new task");
+            backend.add_task(&title.join(" "))?;
+            is_need_to_print = true;
         }
-    
-        Some(Commands::Remove { title }) => {
-            if app.db.remove_task(&title.join(" ")).context(style("error: something went wrong!").red())?{
-                println!("{}", style("Removed!").yellow())
-             }
-             else {println!("{}", style("task not found").yellow())}
+
+        Some(Commands::Remove { option }) => {
+            backend.remove_task(&option)?;
+            is_need_to_print = true;
         }
         Some(Commands::List) => {
-            app.db
-                .list_tasks()?;
+            backend.print_tasks();
         }
-        Some(Commands::Mark { title, remove }) => {
-             if app.db.mark_task(&title.join(" ")).context(style("error: something went wrong!").red())?{
-                println!("{}", style("Marked!").yellow())
-             }
-             else {println!("{}", style("task not found").yellow())}
-            match *remove{
-                true => {                  
-                                app.db.remove_task(&title.join(" ")).context(style("error: something went wrong!").red())?;
-                            },
-                _ => {}
-            }   
+        Some(Commands::Mark { option, remove }) => {
+            if remove {
+                backend.remove_task(&option)?;
+                return Ok(());
+            }
+            backend.mark_task(option)?;
+            is_need_to_print = true;
         }
         Some(Commands::Tui) => {
-            init(app).expect("failed to init tui!  ");
+            init(app, backend).expect("Failed to init tui!");
+        }
+        Some(Commands::Priority { option, priority }) => {
+            let p = Priority::from_str(&priority)?;
+            backend.edit_priority(option, p)?;
         }
         None => {
-
-            println!("{}", style("Wrong command, exiting").yellow());
+            println!("{}", warning_msg("Wrong command, exiting"));
         }
-
     }
-
-    
+    if is_need_to_print  {
+        backend.print_tasks();
+    }
     Ok(())
 }

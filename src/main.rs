@@ -1,12 +1,15 @@
-use anyhow::Result;
+use crate::{backend::Backend, error::AppError};
 use app_state::AppState;
 use commander::commander;
 
-mod task; 
-mod commander;
 mod app_state;
-mod db;
-mod cli; 
+mod backend;
+mod cli;
+mod colors;
+mod commander;
+mod error;
+mod task;
+mod task_option;
 mod tui;
 
 // TODO: add  features like --verbose
@@ -19,10 +22,23 @@ mod tui;
 // TODO: let  the user decide for db name and choose them in tui mode and cli mode
 // TODO: separate file for handling output(handler.rs)
 
-fn main() -> Result<()> {
-    let mut app = AppState::new("tasks.db");
+fn main() -> Result<(), AppError> {
+    let result: Result<(), AppError> = (|| {
+        let mut backend = Backend::new("tasks.json")?;
+        backend.update()?;
 
+        let mut app = AppState::new();
+        commander(&mut app, &mut backend)?;
 
-    commander(&mut app)?;
+        backend.save().ok();
+
+        Ok(())
+    })();
+
+    if let Err(e) = result {
+        eprintln!("Error: {e}");
+        std::process::exit(1);
+    }
+
     Ok(())
 }

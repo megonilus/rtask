@@ -1,5 +1,5 @@
 use ratatui::{
-    crossterm::event::{self, Event, KeyEvent},
+    crossterm::event::{self, Event, KeyEvent, KeyEventKind},
     layout::{Alignment, Constraint, Flex, Layout, Rect},
     style::{Color, Style, Stylize},
     text::{Line, ToSpan},
@@ -102,55 +102,56 @@ fn handle_key(
     app_state: &mut AppState,
     backend: &mut Backend,
 ) -> Result<bool, AppError> {
-    match key.code {
-        event::KeyCode::Esc => {
-            // * exiting the program with esc keybinding
-            if app_state.showing_help {
-                app_state.showing_help = false;
+    if key.kind == KeyEventKind::Press {
+        match key.code {
+            event::KeyCode::Esc => {
+                // * exiting the program with esc keybinding
+                if app_state.showing_help {
+                    app_state.showing_help = false;
+                    return Ok(false);
+                }
                 return Ok(false);
             }
-            return Ok(false);
-        }
-        event::KeyCode::Enter => {
-            if let Some(index) = app_state.list_state.selected() {
-                backend.mark_task(TaskOption::Id(index + 1))?;
-            }
-        }
-        event::KeyCode::Backspace => {
-            if let Some(index) = app_state.list_state.selected() {
-                backend.remove_task(&TaskOption::Id(index + 1))?;
-            }
-        }
-        event::KeyCode::Char(char) => match char {
-            'c' => {
-                app_state.tui_state = TuiState::Add("".to_string());
-            }
-            'k' => {
-                app_state.list_state.select_previous();
-            }
-            'j' => {
-                app_state.list_state.select_next();
-            }
-            'h' => {
-                app_state.showing_help = !app_state.showing_help;
-            }
-            'e' => {
-                if let Some(i) = app_state.list_state.selected() {
-                    backend.substract_priority(TaskOption::Id(i), true)?;
-                    let _ = backend.save();
+            event::KeyCode::Enter => {
+                if let Some(index) = app_state.list_state.selected() {
+                    backend.mark_task(TaskOption::Id(index + 1))?;
                 }
             }
-            'r' => {
-                if let Some(i) = app_state.list_state.selected() {
-                    backend.substract_priority(TaskOption::Id(i), false)?;
-                    let _ = backend.save();
+            event::KeyCode::Backspace => {
+                if let Some(index) = app_state.list_state.selected() {
+                    backend.remove_task(&TaskOption::Id(index + 1))?;
                 }
             }
+            event::KeyCode::Char(char) => match char {
+                'c' => {
+                    app_state.tui_state = TuiState::Add("".to_string());
+                }
+                'k' => {
+                    app_state.list_state.select_previous();
+                }
+                'j' => {
+                    app_state.list_state.select_next();
+                }
+                'h' => {
+                    app_state.showing_help = !app_state.showing_help;
+                }
+                'e' => {
+                    if let Some(i) = app_state.list_state.selected() {
+                        backend.substract_priority(TaskOption::Id(i), true)?;
+                        let _ = backend.save();
+                    }
+                }
+                'r' => {
+                    if let Some(i) = app_state.list_state.selected() {
+                        backend.substract_priority(TaskOption::Id(i), false)?;
+                        let _ = backend.save();
+                    }
+                }
+                _ => {}
+            },
             _ => {}
-        },
-        _ => {}
+        }
     }
-
     Ok(false)
 }
 

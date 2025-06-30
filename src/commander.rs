@@ -39,6 +39,7 @@ pub fn commander(app: &mut AppState, backend: &mut Backend) -> Result<(), AppErr
         Some(Commands::Priority { option, priority }) => {
             let p = Priority::from_str(&priority)?;
             backend.edit_priority(option, p)?;
+            is_need_to_print = true;
         }
         None => {
             println!("{}", warning_msg("Wrong command, exiting"));

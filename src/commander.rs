@@ -1,7 +1,7 @@
 use crate::app_state::AppState;
 use crate::backend::Backend;
 use crate::cli::{Args, Commands};
-use crate::colors::{error_msg, success_msg, warning_msg};
+use crate::colors::warning_msg;
 use crate::error::AppError;
 use crate::task::Priority;
 use crate::tui::init;
@@ -37,22 +37,14 @@ pub fn commander(app: &mut AppState, backend: &mut Backend) -> Result<(), AppErr
             init(app, backend).expect("Failed to init tui!");
         }
         Some(Commands::Priority { option, priority }) => {
-            let p = Priority::from_str(&priority);
-
-            match p {
-                Ok(priority) => {
-                    backend.edit_priority(option, priority)?;
-                }
-                Err(e) => {
-                    eprintln!("Wrong priority! entered: {}", error_msg(e.as_str()));
-                }
-            };
+            let p = Priority::from_str(&priority)?;
+            backend.edit_priority(option, p)?;
         }
         None => {
             println!("{}", warning_msg("Wrong command, exiting"));
         }
     }
-    if is_need_to_print == true {
+    if is_need_to_print  {
         backend.print_tasks();
     }
     Ok(())

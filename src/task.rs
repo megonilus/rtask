@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::colors::{error_msg, success_msg, warning_msg};
+use crate::{
+    colors::{error_msg, success_msg, warning_msg},
+    error::AppError,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Task {
@@ -29,14 +32,14 @@ pub enum Priority {
 impl Priority {
     const ORDER: [Priority; 3] = [Priority::Low, Priority::Normal, Priority::High];
 
-    pub fn from_str(s: &str) -> Result<Self, String> {
+    pub fn from_str(s: &str) -> Result<Self, AppError> {
         match s.to_lowercase().as_str() {
             "low" => Ok(Priority::Low),
             "normal" => Ok(Priority::Normal),
             "high" => Ok(Priority::High),
-            _ => Err(format!(
+            _ => Err(AppError::InvalidPriority(format!(
                 "Wrong format! Should be Low/Normal/High(case-insensitive), entered {s}"
-            )),
+            ))),
         }
     }
 

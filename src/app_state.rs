@@ -1,8 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
-
 use ratatui::widgets::ListState;
-
-use crate::task::Task;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum TuiState {
@@ -18,7 +14,6 @@ impl TuiState {
     }
 }
 #[derive(Debug)]
-// TODO: global app name variable?
 pub struct AppState {
     pub list_state: ListState,
     pub tui_state: TuiState,
@@ -28,9 +23,6 @@ impl AppState {
     pub fn new() -> Self {
         Self {
             list_state: ListState::default(),
-            // is_add_new: false,
-            // input_string: String::new(),
-            // is_help: false,
             tui_state: TuiState::Normal,
             showing_help: false,
         }

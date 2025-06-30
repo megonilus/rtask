@@ -1,4 +1,3 @@
-use color_eyre::eyre::{Ok, Result};
 use ratatui::{
     crossterm::event::{self, Event, KeyEvent},
     layout::{Alignment, Constraint, Flex, Layout, Rect},
@@ -11,20 +10,17 @@ use ratatui::{
 use crate::{
     app_state::{AppState, TuiState},
     backend::Backend,
+    error::AppError,
     task_option::TaskOption,
 };
 
-// TODO: split in different files
-// TODO: better UI
-// TODO: custom colors
 enum FormAction {
     None,
     Submit,
     Escape,
 }
 
-pub fn init(state: &mut AppState, backend: &mut Backend) -> Result<()> {
-    // TODO: fix this
+pub fn init(state: &mut AppState, backend: &mut Backend) -> Result<(), AppError> {
     let _ = backend.update();
 
     color_eyre::install()?;
@@ -41,11 +37,11 @@ fn run(
     mut terminal: DefaultTerminal,
     app_state: &mut AppState,
     backend: &mut Backend,
-) -> Result<()> {
+) -> Result<(), AppError> {
     // loop where we are rendering and handling the input
     loop {
         // Rendering
-        terminal.draw(|f| render(f, app_state, &backend))?;
+        terminal.draw(|f| render(f, app_state, backend))?;
 
         // Input handling
         if let Event::Key(key) = event::read()? {
@@ -66,7 +62,7 @@ fn run(
                     }
                 },
                 _ => {
-                    if handle_key(key, app_state, backend) {
+                    if handle_key(key, app_state, backend)? {
                         break;
                     }
                 }
@@ -101,24 +97,28 @@ fn handle_new_todo(key: KeyEvent, app_state: &mut AppState) -> FormAction {
     FormAction::None
 }
 
-fn handle_key(key: KeyEvent, app_state: &mut AppState, backend: &mut Backend) -> bool {
+fn handle_key(
+    key: KeyEvent,
+    app_state: &mut AppState,
+    backend: &mut Backend,
+) -> Result<bool, AppError> {
     match key.code {
         event::KeyCode::Esc => {
             // * exiting the program with esc keybinding
             if app_state.showing_help {
                 app_state.showing_help = false;
-                return false;
+                return Ok(false);
             }
-            return true;
+            return Ok(false);
         }
         event::KeyCode::Enter => {
             if let Some(index) = app_state.list_state.selected() {
-                let _ = backend.mark_task(TaskOption::Id(index));
+                backend.mark_task(TaskOption::Id(index + 1))?;
             }
         }
         event::KeyCode::Backspace => {
             if let Some(index) = app_state.list_state.selected() {
-                let _ = backend.remove_task(&TaskOption::Id(index));
+                backend.remove_task(&TaskOption::Id(index + 1))?;
             }
         }
         event::KeyCode::Char(char) => match char {
@@ -134,24 +134,24 @@ fn handle_key(key: KeyEvent, app_state: &mut AppState, backend: &mut Backend) ->
             'h' => {
                 app_state.showing_help = !app_state.showing_help;
             }
+            'e' => {
+                if let Some(i) = app_state.list_state.selected() {
+                    backend.substract_priority(TaskOption::Id(i), true)?;
+                    let _ = backend.save();
+                }
+            }
+            'r' => {
+                if let Some(i) = app_state.list_state.selected() {
+                    backend.substract_priority(TaskOption::Id(i), false)?;
+                    let _ = backend.save();
+                }
+            }
             _ => {}
         },
-        event::KeyCode::Up => {
-            if let Some(i) = app_state.list_state.selected() {
-                backend.substract_priority(TaskOption::Id(i), true);
-                let _ = backend.save();
-            }
-        }
-        event::KeyCode::Down => {
-            if let Some(i) = app_state.list_state.selected() {
-                backend.substract_priority(TaskOption::Id(i), false);
-                let _ = backend.save();
-            }
-        }
         _ => {}
     }
 
-    false
+    Ok(false)
 }
 
 // function for rendering
@@ -170,9 +170,10 @@ fn render(frame: &mut Frame, app_state: &mut AppState, backend: &Backend) {
                     Line::from(vec!["j / k".cyan().bold(), " - Move up/down".into()]),
                     Line::from(vec!["c".cyan().bold(), " - Create task".into()]),
                     Line::from(vec!["Enter".cyan().bold(), " - Toggle done".into()]),
-                    Line::from(vec!["Up / Down".cyan().bold(), " - Priority +/-".into()]),
+                    Line::from(vec!["e / r".cyan().bold(), " - Priority +/-".into()]),
                     Line::from(vec!["Backspace".cyan().bold(), " - Remove task".into()]),
-                    Line::from(vec!["Esc".cyan().bold(), " - Exit".into()]),
+                    Line::from(vec!["Esc".cyan().bold(), " - Exit / Hide help".into()]),
+                    Line::from(vec!["h".cyan().bold(), " - Show / Hide help".into()]),
                 ])
                 .block(
                     Block::bordered()

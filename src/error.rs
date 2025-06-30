@@ -13,21 +13,16 @@ pub enum AppError {
 
     #[error("NotFound error: task with title {0} not found ")]
     TaskNotFound(TaskOption),
-    
+
     #[error("Error: Empty input")]
     EmptyInput,
 
     #[error("TooBigIndex error: entered {0}, when max is: {1}")]
     TooBigIndex(usize, usize),
 
-
     #[error("Invalid priority: {0}")]
     InvalidPriority(String),
 
-    #[error("Failed to init tui: {0}")]
-    TuiInitFail(String),
-
-    #[error("Generic error: {0}")]
-    Other(String),
+    #[error("Error: {0}")]
+    ColorEyreError(#[from] color_eyre::eyre::Error),
 }
-

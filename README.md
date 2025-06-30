@@ -3,49 +3,32 @@
 > is a project that has taught me a lot about Rust!
 
 Current Version: `0.3.0`
-License: *GPL (planned)*
+License: _GPL (planned)_
 
 ---
 
+## Requirements
+
+- Rust (latest stable) — [Install Rust via rustup](https://rustup.rs/)
+- Cargo (comes bundled with Rust)
+
+Make sure you have Rust and Cargo installed before proceeding.
+
 ## Features
 
-* ✅ Add and remove tasks
-* ✅ Mark tasks as done or not done
-* ✅ Change priority of tasks
-* 📋 List all tasks
-* 🖥️ Interactive TUI mode
+- Add and remove tasks
+- Mark tasks as done or not done
+- Change priority of tasks
+- List all tasks
+- Interactive TUI mode
 
 ---
 
 ## Installation
-Download the latest release or alternatively compile yourself:
-```sh
-cargo install --path <path_to_source>
-```
-
----
-
-## CLI Usage
 
 ```sh
-rtask [COMMAND]
+cd <path_to_source> && make install
 ```
-
-### Commands
-
-* `add [TITLE]...` — Add a task with the specified title
-* `remove [TITLE]...` — Remove a task with the given title
-* `mark [OPTIONS] [TITLE]...` — Mark a task as done/undone
-
-  * `-r`, `--remove` — Automatically remove task after marking it as done
-* `list` — List all tasks with their statuses
-* `tui` — Launch interactive terminal user interface
-* `help` — Show help message
-
-### Global Options
-
-* `-h`, `--help` — Show help message
-* `-V`, `--version` — Show version info
 
 ---
 
@@ -61,23 +44,24 @@ In TUI mode you can do all stuff what you can in cli mode
 
 ## TODO
 
-* More features
-* Safer code
-* Better error handling
-* Easier installation
-* 
-  
-
----
+- [ ] Add more features and bring deeper meaning to the project
+- [ ] Use Nerd Font icons for better visuals
+- [ ] Create `utils.rs` for helper functions
+- [ ] Let user choose database file name (both in CLI and TUI)
+- [ ] Move output logic to separate `handler.rs`
+- [ ] Improve terminal UI: layout, colors, structure
+- [ ] Allow custom colors via config
+- [ ] Add config file for persistent preferences
+- [ ] Support `list --done` to filter completed tasks
+- [ ] Support `list --search <query>` to search tasks
+- [ ] Allow optional deadlines on task creation
+- [ ] Add sorting by priority
 
 ## Notes
 
 I'm still learning Rust and programming itself — please excuse any bugs, weird behavior, or silly mistakes in the code.
-I'm not very active on Github so I can go a long time without responding to PRs and Issues
 
 Also, forgive my poor English if something sounds odd :)
-
-
 
 Thanks for trying `rtask`!
 

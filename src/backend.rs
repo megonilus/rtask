@@ -1,5 +1,5 @@
 use crate::{
-    colors::{error_msg, success_msg, warning_msg},
+    colors::{success_msg, warning_msg},
     error::AppError,
     task::{Priority, Task},
     task_option::TaskOption,
@@ -10,7 +10,6 @@ use std::{
     fs::{self, File},
     io::Write,
     path::PathBuf,
-    sync::mpsc::TryIter,
 };
 
 #[derive(Debug)]
@@ -24,7 +23,10 @@ impl Backend {
         let mut base_path = config_dir().unwrap_or_else(|| PathBuf::from("."));
         base_path.push("rtask");
         if let Err(e) = fs::create_dir_all(&base_path) {
-            eprintln!("{}", "Failed to create rtask config dir".fg::<Red>());
+            eprintln!(
+                "error: {e}, {}",
+                "Failed to create rtask config dir".fg::<Red>()
+            );
         }
 
         base_path.push(path);
@@ -38,8 +40,8 @@ impl Backend {
         })
     }
 
-    pub fn add_task(&mut self, title: &String) -> Result<(), AppError> {
-        if title == "" {
+    pub fn add_task(&mut self, title: &str) -> Result<(), AppError> {
+        if title.is_empty() {
             return Err(AppError::EmptyInput);
         }
         // ! check for an existing task
@@ -110,7 +112,7 @@ impl Backend {
                 }
             }
             TaskOption::Title(title) => {
-                if title.join(" ") == "" {
+                if title.join(" ").is_empty() {
                     return Err(AppError::EmptyInput);
                 }
                 let items = &mut self.items;
@@ -143,11 +145,10 @@ impl Backend {
                             task.priority.decrease()
                         };
                         return Ok(());
-                    } 
+                    }
                     return Err(AppError::TaskNotFound(TaskOption::Id(index)));
-                    
                 }
-                return Err(AppError::TooBigIndex(index, items.len()));
+                Err(AppError::TooBigIndex(index, items.len()))
             }
             TaskOption::Title(title) => {
                 for t in items.iter_mut() {
@@ -164,24 +165,25 @@ impl Backend {
         }
     }
 
-    // TODO: this
     pub fn remove_task(&mut self, opt: &TaskOption) -> Result<(), AppError> {
-        let items = &mut self.items;
         match opt {
             TaskOption::Id(i) => {
-                if *i == 0  || *i > items.len() {
-                    return Err(AppError::TooBigIndex(*i, items.len()));
+                if *i == 0 || *i > self.items.len() {
+                    return Err(AppError::TooBigIndex(*i, self.items.len()));
                 }
-                items.remove(*i - 1);
+                self.items.remove(*i - 1);
             }
             TaskOption::Title(title) => {
-                if title.join(" ") == "" {
+                if title.join(" ").is_empty() {
                     return Err(AppError::EmptyInput);
                 }
-                items.retain(|t| t.title != title.join(" "));
+                let old_len = self.items.len();
+                self.items.retain(|t| t.title != title.join(" "));
+                if self.items.len() == old_len {
+                    return Err(AppError::TaskNotFound(TaskOption::Title(title.clone())));
+                }
             }
         }
-
         Ok(())
     }
     pub fn update(&mut self) -> Result<(), AppError> {

@@ -1,16 +1,16 @@
+use crate::{backend::Backend, error::AppError};
 use app_state::AppState;
 use commander::commander;
-use crate::{backend::Backend, error::AppError};
 
 mod app_state;
 mod backend;
 mod cli;
 mod colors;
 mod commander;
+mod error;
 mod task;
 mod task_option;
 mod tui;
-mod error;
 
 // TODO: add  features like --verbose
 // TODO: add more features and meaning to the project
@@ -23,15 +23,22 @@ mod error;
 // TODO: separate file for handling output(handler.rs)
 
 fn main() -> Result<(), AppError> {
+    let result: Result<(), AppError> = (|| {
+        let mut backend = Backend::new("tasks.json")?;
+        backend.update()?;
 
-    let mut backend = Backend::new("tasks.json")?;
+        let mut app = AppState::new();
+        commander(&mut app, &mut backend)?;
 
-    backend.update()?;
+        backend.save().ok();
 
-    let mut app = AppState::new();
+        Ok(())
+    })();
 
-    commander(&mut app, &mut backend)?;
+    if let Err(e) = result {
+        eprintln!("Error: {e}");
+        std::process::exit(1);
+    }
 
-    let _ = backend.save();
     Ok(())
 }

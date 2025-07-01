@@ -26,6 +26,9 @@ pub enum AppError {
     #[error("Task with title: {0} already exists")]
     AlreadyExists(String),
 
+    #[error("Wrong format input: {0}")]
+    TaskOptionException(String),
+
     #[error("Error: {0}")]
     ColorEyreError(#[from] color_eyre::eyre::Error),
 }

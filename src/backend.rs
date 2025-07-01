@@ -73,7 +73,7 @@ impl Backend {
                     } else {
                         warning_msg("In progress")
                     },
-                    Priority::visualise(&task.priority)
+                    task.priority.visualise()
                 )
             }
         }

@@ -1,6 +1,6 @@
 [package]
 name = "rtask"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2024"
 description = "CLI/TUI task manager"
 authors = ["megonilus"]
@@ -19,4 +19,6 @@ owo-colors = "4.2.2"
 ratatui = "0.29.0"
 serde = {version =  "1.0.219", features = ["derive"]}
 serde_json = "1.0.140"
+strum = { version = "0.27.1", features = ["derive"] }
+strum_macros = "0.27.1"
 thiserror = "2.0.12"

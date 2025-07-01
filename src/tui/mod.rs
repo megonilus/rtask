@@ -73,25 +73,27 @@ fn run(
 }
 
 fn handle_new_todo(key: KeyEvent, app_state: &mut AppState) -> FormAction {
-    match key.code {
-        event::KeyCode::Char(char) => {
-            if let Some(input_string) = app_state.tui_state.get_input_string() {
-                input_string.push(char);
+    if key.kind == KeyEventKind::Press {
+        match key.code {
+            event::KeyCode::Char(char) => {
+                if let Some(input_string) = app_state.tui_state.get_input_string() {
+                    input_string.push(char);
+                }
             }
-        }
-        event::KeyCode::Backspace => {
-            if let Some(input_string) = app_state.tui_state.get_input_string() {
-                input_string.pop();
+            event::KeyCode::Backspace => {
+                if let Some(input_string) = app_state.tui_state.get_input_string() {
+                    input_string.pop();
+                }
             }
-        }
-        event::KeyCode::Esc => {
-            return FormAction::Escape;
-        }
-        event::KeyCode::Enter => {
-            return FormAction::Submit;
-        }
+            event::KeyCode::Esc => {
+                return FormAction::Escape;
+            }
+            event::KeyCode::Enter => {
+                return FormAction::Submit;
+            }
 
-        _ => {}
+            _ => {}
+        }
     }
 
     FormAction::None
@@ -110,7 +112,7 @@ fn handle_key(
                     app_state.showing_help = false;
                     return Ok(false);
                 }
-                return Ok(false);
+                return Ok(true);
             }
             event::KeyCode::Enter => {
                 if let Some(index) = app_state.list_state.selected() {
@@ -147,6 +149,14 @@ fn handle_key(
                         let _ = backend.save();
                     }
                 }
+                'a' => {
+                    backend.sort(false)?;
+                    app_state.list_state.select(Some(0));
+                }
+                'd' => {
+                    backend.sort(true)?;
+                    app_state.list_state.select(Some(0));
+                }
                 _ => {}
             },
             _ => {}
@@ -171,7 +181,11 @@ fn render(frame: &mut Frame, app_state: &mut AppState, backend: &Backend) {
                     Line::from(vec!["j / k".cyan().bold(), " - Move up/down".into()]),
                     Line::from(vec!["c".cyan().bold(), " - Create task".into()]),
                     Line::from(vec!["Enter".cyan().bold(), " - Toggle done".into()]),
-                    Line::from(vec!["e / r".cyan().bold(), " - Priority +/-".into()]),
+                    Line::from(vec!["e / r".cyan().bold(), " - Priority -/+".into()]),
+                    Line::from(vec![
+                        "a / d".cyan().bold(),
+                        " - Sort tasks by priority Ascending / Descending".into(),
+                    ]),
                     Line::from(vec!["Backspace".cyan().bold(), " - Remove task".into()]),
                     Line::from(vec!["Esc".cyan().bold(), " - Exit / Hide help".into()]),
                     Line::from(vec!["h".cyan().bold(), " - Show / Hide help".into()]),
@@ -206,7 +220,7 @@ fn render(frame: &mut Frame, app_state: &mut AppState, backend: &Backend) {
                         task.title.to_span()
                     },
                     " | ".into(),
-                    task.priority.to_str().into(),
+                    task.priority.to_string().into(),
                 ]);
 
                 ListItem::from(value)

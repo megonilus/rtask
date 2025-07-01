@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize};
+use strum::VariantNames;
+use strum_macros::{Display, EnumIter, EnumString};
 
-use crate::{
-    colors::{error_msg, success_msg, warning_msg},
-    error::AppError,
-};
+use crate::colors::style_msg;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Task {
@@ -22,54 +21,65 @@ impl Task {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    EnumString,
+    Display,
+    EnumIter,
+    VariantNames,
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Copy,
+)]
+#[strum(serialize_all = "PascalCase", ascii_case_insensitive)]
 pub enum Priority {
-    Low,
-    Normal,
+    #[strum(serialize = "high")]
     High,
+    #[strum(serialize = "normal")]
+    Normal,
+    #[strum(serialize = "low")]
+    Low,
 }
 
 impl Priority {
-    const ORDER: [Priority; 3] = [Priority::Low, Priority::Normal, Priority::High];
-
-    pub fn from_str(s: &str) -> Result<Self, AppError> {
-        match s.to_lowercase().as_str() {
-            "low" => Ok(Priority::Low),
-            "normal" => Ok(Priority::Normal),
-            "high" => Ok(Priority::High),
-            _ => Err(AppError::InvalidPriority(format!(
-                "Wrong format! Should be Low/Normal/High(case-insensitive), entered {s}"
-            ))),
-        }
-    }
-
-    pub fn to_str(&self) -> &str {
-        match &self {
-            Priority::Low => "Low",
-            Priority::Normal => "Normal",
-            Priority::High => "High",
-        }
-    }
-
     pub fn visualise(&self) -> String {
-        match self.to_str() {
-            "Low" => success_msg("Low"),
-            "Normal" => warning_msg("Normal"),
-            "High" => error_msg("High"),
-            _ => "".to_string(),
+        match self {
+            Priority::Low => style_msg(
+                "Low",
+                (91, 152, 70),
+                owo_colors::DynColors::Ansi(owo_colors::AnsiColors::BrightGreen),
+            ),
+            Priority::Normal => style_msg(
+                "Normal",
+                (244, 199, 42),
+                owo_colors::DynColors::Ansi(owo_colors::AnsiColors::BrightYellow),
+            ),
+            Priority::High => style_msg(
+                "High",
+                (210, 68, 99),
+                owo_colors::DynColors::Ansi(owo_colors::AnsiColors::BrightRed),
+            ),
         }
     }
 
     pub fn decrease(&self) -> Self {
-        let index = Self::ORDER.iter().position(|p| p == self).unwrap_or(1);
-        Self::ORDER.get(index.saturating_sub(1)).unwrap().clone()
+        Priority::from((*self as usize).saturating_add(1))
     }
 
     pub fn increase(&self) -> Self {
-        let index = Self::ORDER.iter().position(|p| p == self).unwrap_or(1);
-        Self::ORDER
-            .get((index + 1).min(Self::ORDER.len() - 1))
-            .unwrap()
-            .clone()
+        Priority::from((*self as usize).saturating_sub(1))
+    }
+}
+
+impl From<usize> for Priority {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => Priority::High,
+            1 => Priority::Normal,
+            _ => Priority::Low,
+        }
     }
 }

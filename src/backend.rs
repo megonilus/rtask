@@ -44,11 +44,11 @@ impl Backend {
         if title.is_empty() {
             return Err(AppError::EmptyInput);
         }
-        
-        if Option::is_some(&self.items.iter().find(|t| t.title == title)){
-            return Err(AppError::AlreadyExists(title.to_string()))
-        }   
-        
+
+        if Option::is_some(&self.items.iter().find(|t| t.title == title)) {
+            return Err(AppError::AlreadyExists(title.to_string()));
+        }
+
         // ! check for an existing task
         let task = Task::new(title);
 
@@ -56,19 +56,26 @@ impl Backend {
         Ok(())
     }
 
-    pub fn print_tasks(&self) {
-        for (index, task) in self.items.iter().enumerate() {
-            println!(
-                "№{} name: {}, state: {}, priority: {}",
-                index + 1,
-                task.title,
-                if task.done {
-                    success_msg("Done")
-                } else {
-                    warning_msg("In progress")
-                },
-                Priority::visualise(&task.priority)
-            );
+    pub fn print_tasks(&self, sort: bool, done: bool) {
+        let mut items = self.items.clone();
+        if sort {
+            items =Self::sort_tasks(&items,false);
+        }
+
+        for (index, task) in items.iter().enumerate() {
+            if !done || task.done {
+                println!(
+                    "№{} name: {}, state: {}, priority: {}",
+                    index + 1,
+                    task.title,
+                    if task.done {
+                        success_msg("Done")
+                    } else {
+                        warning_msg("In progress")
+                    },
+                    task.priority.visualise()
+                )
+            }
         }
     }
     pub fn mark_task(&mut self, opt: TaskOption) -> Result<(), AppError> {
@@ -125,7 +132,7 @@ impl Backend {
 
                 for t in items.iter_mut() {
                     if t.title == title.join(" ") {
-                        t.priority = prior.clone();
+                        t.priority = prior;
                         found = true
                     }
                 }
@@ -191,6 +198,19 @@ impl Backend {
         }
         Ok(())
     }
+
+    pub fn sort(&mut self, reversed: bool) -> Result<(), AppError> {
+        self.items = Self::sort_tasks(&self.items, reversed);
+        Ok(())
+    }
+
+    pub fn sort_tasks(items: &Vec<Task>, reversed: bool) -> Vec<Task> {
+        let mut sorted = items.to_owned();
+        sorted.sort_by_key(|t| {if reversed{return Priority::Low as usize - t.priority as usize} t.priority as usize});
+        
+        sorted
+    }
+
     pub fn update(&mut self) -> Result<(), AppError> {
         self.items = serde_json::from_str(fs::read_to_string(&self.path)?.as_str())?;
         Ok(())

@@ -1,0 +1,33 @@
+name: Release on Tag
+
+on:
+  push:
+    tags:
+      - 'v*'  
+
+jobs:
+  clippy_and_release:
+    name: Run clippy and release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: clippy
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Create GitHub Release
+        if: success() 
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

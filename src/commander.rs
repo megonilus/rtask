@@ -18,12 +18,17 @@ pub fn commander(app: &mut AppState, backend: &mut Backend) -> Result<(), AppErr
             is_need_to_print = true;
         }
 
-        Some(Commands::Remove { option }) => {
+        Some(Commands::Remove { option, done }) => {
+            if done {
+                backend.items.retain(|t| !t.done);
+                return Ok(());
+            }
             backend.remove_task(&option)?;
+
             is_need_to_print = true;
         }
-        Some(Commands::List) => {
-            backend.print_tasks();
+        Some(Commands::List { done, sort }) => {
+            backend.print_tasks(sort, done);
         }
         Some(Commands::Mark { option, remove }) => {
             if remove {
@@ -41,12 +46,16 @@ pub fn commander(app: &mut AppState, backend: &mut Backend) -> Result<(), AppErr
             backend.edit_priority(option, p)?;
             is_need_to_print = true;
         }
+        Some(Commands::Sort{reverse}) => {
+            backend.sort(reverse)?;
+            is_need_to_print = true;
+        }
         None => {
             println!("{}", warning_msg("Wrong command, exiting"));
         }
     }
-    if is_need_to_print  {
-        backend.print_tasks();
+    if is_need_to_print {
+        backend.print_tasks(false, false);
     }
     Ok(())
 }

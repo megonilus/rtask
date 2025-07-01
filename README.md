@@ -2,7 +2,7 @@
 
 > is a project that has taught me a lot about Rust!
 
-Current Version: `0.3.1`
+Current Version: `0.3.2`
 License: _GPL (planned)_
 
 ---
@@ -21,7 +21,7 @@ Make sure you have Rust and Cargo installed before proceeding.
 - Change priority of tasks
 - List all tasks
 - Interactive TUI mode
-
+- Sort tasks by their priorities
 ---
 
 ## Installation

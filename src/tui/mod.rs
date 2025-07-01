@@ -110,7 +110,7 @@ fn handle_key(
                     app_state.showing_help = false;
                     return Ok(false);
                 }
-                return Ok(false);
+                return Ok(true);
             }
             event::KeyCode::Enter => {
                 if let Some(index) = app_state.list_state.selected() {
@@ -147,6 +147,14 @@ fn handle_key(
                         let _ = backend.save();
                     }
                 }
+                's' => {
+                    backend.sort(false)?;
+                    app_state.list_state.select(Some(0));
+                }
+                'd' => {
+                    backend.sort(true)?;
+                    app_state.list_state.select(Some(0));
+                }
                 _ => {}
             },
             _ => {}
@@ -171,7 +179,8 @@ fn render(frame: &mut Frame, app_state: &mut AppState, backend: &Backend) {
                     Line::from(vec!["j / k".cyan().bold(), " - Move up/down".into()]),
                     Line::from(vec!["c".cyan().bold(), " - Create task".into()]),
                     Line::from(vec!["Enter".cyan().bold(), " - Toggle done".into()]),
-                    Line::from(vec!["e / r".cyan().bold(), " - Priority +/-".into()]),
+                    Line::from(vec!["e / r".cyan().bold(), " - Priority -/+".into()]),
+                    Line::from(vec!["s / d".cyan().bold(), " - Sort tasks by priority Ascending / Descending".into()]),
                     Line::from(vec!["Backspace".cyan().bold(), " - Remove task".into()]),
                     Line::from(vec!["Esc".cyan().bold(), " - Exit / Hide help".into()]),
                     Line::from(vec!["h".cyan().bold(), " - Show / Hide help".into()]),

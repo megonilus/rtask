@@ -22,16 +22,15 @@ impl Task {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Copy)]
 pub enum Priority {
-    Low,
-    Normal,
-    High,
+    High = 0,
+    Normal = 1,
+    Low = 2,
 }
 
-impl Priority {
-    const ORDER: [Priority; 3] = [Priority::Low, Priority::Normal, Priority::High];
 
+impl Priority {
     pub fn from_str(s: &str) -> Result<Self, AppError> {
         match s.to_lowercase().as_str() {
             "low" => Ok(Priority::Low),
@@ -43,7 +42,7 @@ impl Priority {
         }
     }
 
-    pub fn to_str(&self) -> &str {
+    pub fn to_str(self) -> &'static str {
         match &self {
             Priority::Low => "Low",
             Priority::Normal => "Normal",
@@ -61,15 +60,22 @@ impl Priority {
     }
 
     pub fn decrease(&self) -> Self {
-        let index = Self::ORDER.iter().position(|p| p == self).unwrap_or(1);
-        Self::ORDER.get(index.saturating_sub(1)).unwrap().clone()
+        Priority::from((*self as usize).saturating_add(1))
+        
     }
 
     pub fn increase(&self) -> Self {
-        let index = Self::ORDER.iter().position(|p| p == self).unwrap_or(1);
-        Self::ORDER
-            .get((index + 1).min(Self::ORDER.len() - 1))
-            .unwrap()
-            .clone()
+        Priority::from((*self as usize).saturating_sub(1))
+    }
+}
+
+impl From<usize> for Priority{
+    fn from(value: usize) -> Self {
+        match value {
+            0 => Priority::High,
+            1 => Priority::Normal,
+            2 => Priority::Low,
+            _ => Priority::Normal
+        }
     }
 }

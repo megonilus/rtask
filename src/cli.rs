@@ -1,6 +1,5 @@
-use clap::{Parser, Subcommand};
-
 use crate::task_option::TaskOption;
+use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -17,8 +16,15 @@ pub enum Commands {
         title: Vec<String>,
     },
 
-    /// Remove a task by ID or full title. Example: rtask remove 2 or rtask remove "Buy milk"
-    Remove { option: TaskOption },
+    /// Remove a task by ID or full title. Example: rtask remove 2 or rtask remove Buy milk
+    Remove {
+        /// remove all done tasks, if parsed rtask will ignore the option you will provide
+        /// e.g. rtask remove -r Buy Milk... will lead to Buy Milk... to be ignored
+        #[arg(short, long)]
+        done: bool,
+
+        option: TaskOption,
+    },
 
     /// Mark a task as done or undone by ID or title. Optionally remove it right after.
     Mark {
@@ -28,7 +34,7 @@ pub enum Commands {
         remove: bool,
     },
 
-    /// Change the priority of a task by ID or title. Example: rtask priority high "Buy milk"
+    /// Change the priority of a task by ID or title. Example: rtask priority high Buy milk
     Priority {
         /// New priority value (e.g. low, normal, high)
         priority: String,
@@ -36,7 +42,20 @@ pub enum Commands {
     },
 
     /// Show the current task list
-    List,
+    List {
+        /// list only done items
+        #[arg(short, long)]
+        done: bool,
+
+        /// list sorted items by their priority
+        #[arg(short, long)]
+        sort: bool,
+    },
+    /// sort and save
+    Sort{
+        #[arg(short,long)]
+        reverse: bool
+    },
 
     /// Start the interactive TUI mode
     Tui,
